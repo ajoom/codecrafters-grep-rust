@@ -2,7 +2,7 @@ use std::env;
 use std::io;
 use std::process;
 
-fn _match_pattern(input_line: &str, pattern: &str) -> bool {
+fn match_pattern(input_line: &str, pattern: &str) -> bool {
     if pattern.chars().count() == 1 {
         input_line.contains(pattern)
     } else {
@@ -20,15 +20,14 @@ fn main() {
         process::exit(1);
     }
 
-    let _pattern = env::args().nth(2).unwrap();
+    let pattern = env::args().nth(2).unwrap();
     let mut input_line = String::new();
 
     io::stdin().read_line(&mut input_line).unwrap();
 
-    // Uncomment this block to pass the first stage
-    // if match_pattern(&input_line, &pattern) {
-    //     process::exit(0)
-    // } else {
-    //     process::exit(1)
-    // }
+    if match_pattern(&input_line, &pattern) {
+        process::exit(0)
+    } else {
+        process::exit(1)
+    }
 }
