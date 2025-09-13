@@ -22,6 +22,8 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
                 return true;
             }
         }
+
+        return false;
     }
 
     panic!("Unhandled pattern: {pattern}");
