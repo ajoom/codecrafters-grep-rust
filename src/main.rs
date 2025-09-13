@@ -1,18 +1,30 @@
+use std::collections::HashSet;
 use std::env;
 use std::io;
 use std::process;
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     if pattern.chars().count() == 1 {
-        input_line.contains(pattern)
+        return input_line.contains(pattern);
     } else if pattern == r"\d" {
-        input_line.chars().any(|c| c.is_ascii_digit())
+        return input_line.chars().any(|c| c.is_ascii_digit());
     } else if pattern == r"\w" {
-        input_line.chars().any(|c| c.is_ascii_alphanumeric() || c == '_')
-    } 
-    else {
-        panic!("Unhandled pattern: {pattern}");
+        return input_line.chars().any(|c| c.is_ascii_alphanumeric() || c == '_');
+    } else if pattern.len() >= 2 && pattern.starts_with('[')  && pattern.ends_with(']') {
+        let mut pattern_letters = HashSet::new();
+
+        for c in pattern[1..pattern.len()-1].chars() {
+            pattern_letters.insert(c);
+        }
+
+        for c in input_line.chars() {
+            if pattern_letters.contains(&c) {
+                return true;
+            }
+        }
     }
+
+    panic!("Unhandled pattern: {pattern}");
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
