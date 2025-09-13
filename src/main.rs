@@ -10,7 +10,7 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
         return input_line.chars().any(|c| c.is_ascii_digit());
     } else if pattern == r"\w" {
         return input_line.chars().any(|c| c.is_ascii_alphanumeric() || c == '_');
-    } else if pattern.len() >= 2 && pattern.starts_with('[')  && pattern.ends_with(']') {
+    } else if pattern.len() > 2 && pattern.starts_with('[')  && pattern.ends_with(']') {
         let mut pattern_letters = HashSet::new();
 
         for c in pattern[1..pattern.len()-1].chars() {
