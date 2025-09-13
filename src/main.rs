@@ -11,6 +11,13 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     } else if pattern == r"\w" {
         return input_line.chars().any(|c| c.is_ascii_alphanumeric() || c == '_');
     } else if pattern.len() > 2 && pattern.starts_with('[')  && pattern.ends_with(']') {
+
+        let mut positive_group = true; // at least one char in the group
+
+        if pattern.starts_with("[^") {
+            positive_group = false; // at least one char NOT in the group
+        }
+
         let mut pattern_letters = HashSet::new();
 
         for c in pattern[1..pattern.len()-1].chars() {
@@ -18,7 +25,9 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
         }
 
         for c in input_line.chars() {
-            if pattern_letters.contains(&c) {
+            if (pattern_letters.contains(&c) && positive_group)
+            || (!pattern_letters.contains(&c) && !positive_group)
+            {
                 return true;
             }
         }
