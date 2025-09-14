@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::env;
 use std::io;
 use std::process;
+use std::vec;
 
 use crate::pattern::RegexAst;
 use crate::pattern::Repetition;
@@ -14,7 +16,7 @@ use std::collections::HashSet;
 
 
 // Returns all possible end positions after matching this node starting from input_ind
-fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> {
+fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize, captures: &mut HashMap<u32, String>) -> Vec<usize> {
     match node {
         // Single character matchers
         RegexAst::Digit
@@ -47,10 +49,46 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> 
             }
         }
 
+
+        RegexAst::Backreference(group_id) => {
+            let captured_group_text = captures.get(group_id);
+
+            if captured_group_text.is_some() {
+                let captured_group_text: Vec<char> = captured_group_text.unwrap().chars().collect();
+
+                let remaining_input_len = input_chars.len() - input_ind;
+                if remaining_input_len < captured_group_text.len() {
+                    return vec![];
+                }
+
+                // now we can do the comparsion ;) 
+                if input_chars[input_ind..input_ind + captured_group_text.len()] == captured_group_text[..] {
+                    return vec![input_ind + captured_group_text.len()];
+                }
+            }
+
+            vec![]
+        }
+
+
+        RegexAst::CaptureGroup(group_id, ast) => {
+            let mut results = Vec::new();
+
+             let end_positions = solve(input_chars, ast, input_ind, captures);
+             for end_position in &end_positions {
+                let matched_text: String = input_chars[input_ind..*end_position].iter().cloned().collect();
+                captures.insert(*group_id, matched_text);
+                results.push(*end_position);
+             }
+             
+             results
+        }
+
+
         RegexAst::Alternate(regex_asts) => {
             let mut results = HashSet::new();
             for option in regex_asts {
-                for end_pos in solve(input_chars, option, input_ind) {
+                for end_pos in solve(input_chars, option, input_ind, captures) {
                     results.insert(end_pos);
                 }
             }
@@ -63,7 +101,7 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> 
             for ast in regex_asts {
                 let mut next_positions = HashSet::new();
                 for &pos in &current_positions {
-                    for end_pos in solve(input_chars, ast, pos) {
+                    for end_pos in solve(input_chars, ast, pos, captures) {
                         next_positions.insert(end_pos);
                     }
                 }
@@ -75,25 +113,17 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> 
             current_positions
         }
 
-        
-        RegexAst::Backreference(group_id) => {
-            todo!()
-        }
 
-
-        RegexAst::CaptureGroup(group_id, ast) => {
-            todo!()
-        }
 
         RegexAst::Repeat(regex_ast, repetition) => {
             match repetition {
-                Repetition::None => solve(input_chars, regex_ast, input_ind),
+                Repetition::None => solve(input_chars, regex_ast, input_ind, captures),
 
                 Repetition::Optional => {
                     let mut results = HashSet::new();
                     results.insert(input_ind); // Zero matches
 
-                    for end_pos in solve(input_chars, regex_ast, input_ind) {
+                    for end_pos in solve(input_chars, regex_ast, input_ind, captures) {
                         results.insert(end_pos); // One match
                     }
                     results.into_iter().collect()
@@ -109,7 +139,7 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> 
                         let mut found_new = false;
 
                         for &pos in &current_positions {
-                            for end_pos in solve(input_chars, regex_ast, pos) {
+                            for end_pos in solve(input_chars, regex_ast, pos, captures) {
                                 if !results.contains(&end_pos) {
                                     found_new = true;
                                     next_positions.insert(end_pos);
@@ -129,7 +159,7 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> 
                 Repetition::Plus => {
                     let mut results = HashSet::new();
                     let mut current_positions: Vec<usize> =
-                        solve(input_chars, regex_ast, input_ind);
+                        solve(input_chars, regex_ast, input_ind, captures);
 
                     // Add results from first mandatory match
                     for &pos in &current_positions {
@@ -142,7 +172,7 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> 
                         let mut found_new = false;
 
                         for &pos in &current_positions {
-                            for end_pos in solve(input_chars, regex_ast, pos) {
+                            for end_pos in solve(input_chars, regex_ast, pos, captures) {
                                 if !results.contains(&end_pos) {
                                     found_new = true;
                                     next_positions.insert(end_pos);
@@ -169,9 +199,12 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let ast = pattern_to_ast(pattern);
     let input_chars: Vec<char> = input_line.chars().collect();
 
+    eprintln!("{:?}", ast);
+    
     // Try matching from every starting position
     for start_pos in 0..=input_chars.len() {
-        let end_positions = solve(&input_chars, &ast, start_pos);
+        let mut captures = HashMap::new();
+        let end_positions = solve(&input_chars, &ast, start_pos, &mut captures);
        
         if !end_positions.is_empty() {
             return true;
