@@ -75,6 +75,11 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> 
             current_positions
         }
 
+
+        RegexAst::CaptureGroup(group_id, ast) => {
+            todo!()
+        }
+
         RegexAst::Repeat(regex_ast, repetition) => {
             match repetition {
                 Repetition::None => solve(input_chars, regex_ast, input_ind),
