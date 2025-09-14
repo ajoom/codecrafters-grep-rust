@@ -13,12 +13,13 @@ fn solve(input_chars: &Vec<char>, patterns: &Vec<RegPattern>, input_ind: usize, 
     if pattern_ind == patterns.len() {
         return true;
     }
+    
+    let pattern =  &patterns[pattern_ind];
 
     if input_ind == input_chars.len() {
-        return false;
+        return *pattern == RegPattern::EndOfLine;
     }
 
-    let pattern =  &patterns[pattern_ind];
 
     match pattern {
         RegPattern::StartOfLine => solve(input_chars, patterns, input_ind, pattern_ind + 1, true, false),
@@ -41,7 +42,7 @@ fn solve(input_chars: &Vec<char>, patterns: &Vec<RegPattern>, input_ind: usize, 
                 match rep {
                     Repetition::None => {
                         if !matches {
-                            return false;
+                            return solve(input_chars, patterns, input_ind + 1, pattern_ind, false, false);
                         }
                         
                         solve(input_chars, patterns, input_ind + 1, pattern_ind + 1, false, false)
@@ -53,7 +54,7 @@ fn solve(input_chars: &Vec<char>, patterns: &Vec<RegPattern>, input_ind: usize, 
                             if last_matched_on_pattern {
                                 return solve(input_chars, patterns, input_ind, pattern_ind + 1, false, false);
                             } else {
-                                return false;
+                                return solve(input_chars, patterns, input_ind + 1, pattern_ind, false, false);
                             }
                         }
 
