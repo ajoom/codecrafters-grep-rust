@@ -8,7 +8,7 @@ pub enum Repetition {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum RegexAst {
     Concat(Vec<RegexAst>),             // sequence of nodes
     Alternate(Vec<RegexAst>),          // alternation a|b|c

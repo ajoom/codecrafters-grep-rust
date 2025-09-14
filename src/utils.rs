@@ -15,19 +15,23 @@ pub fn pattern_to_ast(pattern: &str) -> RegexAst {
 
 fn parse_alternation(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
     let mut branches = vec![parse_concatination(pattern, pattern_ind)];
-
+    
     while *pattern_ind < pattern.len() && pattern.chars().nth(*pattern_ind).unwrap() == '|' {
         *pattern_ind += 1;
         branches.push(parse_concatination(pattern, pattern_ind));
     }
-
-    RegexAst::Alternate(branches)
+    
+    // Only create Alternate if there are multiple branches
+    if branches.len() == 1 {
+        branches.into_iter().next().unwrap()
+    } else {
+        RegexAst::Alternate(branches)
+    }
 }
-
 
 fn parse_concatination(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
     let mut parts = vec![];
-
+    
     while *pattern_ind < pattern.len() {
         let c = pattern.chars().nth(*pattern_ind).unwrap();
         if c == ')' || c == '|' {
@@ -35,8 +39,13 @@ fn parse_concatination(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
         }
         parts.push(parse_repeat(pattern, pattern_ind));
     }
-
-    RegexAst::Concat(parts)
+    
+    // Only create Concat if there are multiple parts
+    if parts.len() == 1 {
+        parts.into_iter().next().unwrap()
+    } else {
+        RegexAst::Concat(parts)
+    }
 }
 
 
