@@ -12,28 +12,36 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let patterns = patterns_to_vec(pattern);
     let input_chars: Vec<char> = input_line.chars().collect();
     let mut input_ind = 0;
+    let mut next_char_must_match = false;
 
     eprintln!("{:?}", patterns);
 
     for pattern in patterns {
-        let mut pattern_satisfied = false;
-
         if pattern == RegPattern::StartOfLine {
-            pattern_satisfied = input_ind == 0;
+            next_char_must_match = true;
         } else {
+            let mut pattern_satisfied = false;
+
             while input_ind < input_chars.len() {
+                // matches the pattern
                 if match_pattern_with_char(&pattern, input_chars[input_ind]) {
                     pattern_satisfied = true;
                     input_ind += 1;
                     break;
                 }
 
+                // doesnt match the pattern
+                if next_char_must_match {
+                    return false;
+                } 
+
                 input_ind += 1;
             }
-        }
 
-        if !pattern_satisfied {
-            return false;
+            if !pattern_satisfied {
+                return false;
+            }
+            next_char_must_match = false;
         }
     }
 
