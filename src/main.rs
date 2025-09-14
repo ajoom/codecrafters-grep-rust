@@ -2,37 +2,40 @@ use std::env;
 use std::io;
 use std::process;
 
+use crate::pattern::RegPattern;
 use crate::utils::match_pattern_with_char;
 use crate::utils::patterns_to_vec;
 mod pattern;
 mod utils;
 
-
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let patterns = patterns_to_vec(pattern);
     let input_chars: Vec<char> = input_line.chars().collect();
     let mut input_ind = 0;
-    
+
     eprintln!("{:?}", patterns);
 
     for pattern in patterns {
-        let mut pattern_satisfied = false; 
+        let mut pattern_satisfied = false;
 
-        while input_ind < input_chars.len() {
-            if match_pattern_with_char(&pattern, input_chars[input_ind]) {
-                pattern_satisfied = true; 
-                input_ind += 1; 
-                break;
+        if pattern == RegPattern::StartOfLine {
+            pattern_satisfied = input_ind == 0;
+        } else {
+            while input_ind < input_chars.len() {
+                if match_pattern_with_char(&pattern, input_chars[input_ind]) {
+                    pattern_satisfied = true;
+                    input_ind += 1;
+                    break;
+                }
+
+                input_ind += 1;
             }
-
-            input_ind += 1;
         }
 
-        if !pattern_satisfied { 
+        if !pattern_satisfied {
             return false;
         }
     }
-
 
     true
 }

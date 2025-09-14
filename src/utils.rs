@@ -1,3 +1,5 @@
+use core::panic;
+
 use crate::pattern::RegPattern;
 
 pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
@@ -46,6 +48,12 @@ pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
             }
         }
 
+        if pattern.chars().nth(pattern_ind).unwrap() == '^' {
+            result.push(RegPattern::StartOfLine);
+            pattern_ind += 1;
+            continue;
+        }
+
         // literal pattern :)
         result.push(RegPattern::Literal(
             pattern.chars().nth(pattern_ind).unwrap(),
@@ -67,5 +75,7 @@ pub fn match_pattern_with_char(pattern: &RegPattern, c: char) -> bool {
         RegPattern::NegativeGroup(group) => group.chars().all(|gc| gc != c),
 
         RegPattern::Literal(l) => c == *l,
+
+        _ => panic!("should not be matched with char"),
     }
 }
