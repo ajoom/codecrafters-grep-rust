@@ -60,7 +60,7 @@ pub fn match_pattern_with_char(pattern: &RegPattern, c: char) -> bool {
     match pattern {
         RegPattern::Digit => c.is_ascii_digit(),
 
-        RegPattern::Word => c.is_ascii_alphanumeric(),
+        RegPattern::Word =>  c.is_ascii_alphanumeric() || c == '_',
 
         RegPattern::PositiveGroup(group) => group.chars().any(|gc| gc == c),
 
