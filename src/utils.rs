@@ -115,7 +115,7 @@ fn get_repition_type(pattern: &str, last_index_in_pattern: usize) -> Repetition 
     }
 
     match pattern.chars().nth(last_index_in_pattern + 1).unwrap() {
-        '*' => Repetition::Star,
+        '?' => Repetition::Star,
         '+' => Repetition::Plus,
         _ => Repetition::None,
     }
