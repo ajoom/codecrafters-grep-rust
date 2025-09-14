@@ -5,7 +5,8 @@ pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
     let mut result = vec![];
 
     while pattern_ind < pattern.len() {
-        if (pattern_ind + 1) < pattern_ind {
+        if (pattern_ind + 1) < pattern.len() {
+
             // look for digit pattern
             if &pattern[pattern_ind..pattern_ind + 2] == r"\d" {
                 result.push(RegPattern::Digit);

@@ -11,7 +11,8 @@ mod utils;
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let patterns = patterns_to_vec(pattern);
     let mut input_ind: usize = 0;
-
+    
+    eprintln!("{:?}", patterns);
 
     for pattern in patterns {
         let mut pattern_satisfied = false; 
