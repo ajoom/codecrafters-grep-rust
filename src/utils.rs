@@ -129,7 +129,10 @@ fn parse_atom(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
                     *pattern_ind += 1;
                     RegexAst::Digit
                 },
-                _ => panic!("non valid regex pattern")
+                c => {
+                    *pattern_ind += 1;
+                    RegexAst::Literal(c)
+                }
             }
         }, 
 
