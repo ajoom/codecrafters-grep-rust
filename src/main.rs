@@ -75,6 +75,11 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> 
             current_positions
         }
 
+        
+        RegexAst::Backreference(group_id) => {
+            todo!()
+        }
+
 
         RegexAst::CaptureGroup(group_id, ast) => {
             todo!()

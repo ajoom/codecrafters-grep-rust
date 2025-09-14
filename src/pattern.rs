@@ -22,6 +22,7 @@ pub enum RegexAst {
     Wildcard,                          // .
     StartOfLine,                       // ^
     EndOfLine,                         // $
+    Backreference(u32),                     // e.g: \1
 }
 
 /*

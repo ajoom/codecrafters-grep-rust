@@ -8,17 +8,18 @@ use crate::pattern::{RegexAst, Repetition};
 
 pub fn pattern_to_ast(pattern: &str) -> RegexAst {
     let mut pattern_ind = 0;
+    let mut group_counter = 0;
 
-    parse_alternation(pattern, &mut pattern_ind)
+    parse_alternation(pattern, &mut pattern_ind, &mut group_counter)
 }
 
 
-fn parse_alternation(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
-    let mut branches = vec![parse_concatination(pattern, pattern_ind)];
+fn parse_alternation(pattern: &str, pattern_ind: &mut usize, group_counter: &mut u32) -> RegexAst {
+    let mut branches = vec![parse_concatination(pattern, pattern_ind, group_counter)];
     
     while *pattern_ind < pattern.len() && pattern.chars().nth(*pattern_ind).unwrap() == '|' {
         *pattern_ind += 1;
-        branches.push(parse_concatination(pattern, pattern_ind));
+        branches.push(parse_concatination(pattern, pattern_ind, group_counter));
     }
     
     // Only create Alternate if there are multiple branches
@@ -29,7 +30,7 @@ fn parse_alternation(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
     }
 }
 
-fn parse_concatination(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
+fn parse_concatination(pattern: &str, pattern_ind: &mut usize, group_counter: &mut u32) -> RegexAst {
     let mut parts = vec![];
     
     while *pattern_ind < pattern.len() {
@@ -37,7 +38,7 @@ fn parse_concatination(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
         if c == ')' || c == '|' {
             break;
         }
-        parts.push(parse_repeat(pattern, pattern_ind));
+        parts.push(parse_repeat(pattern, pattern_ind, group_counter));
     }
     
     // Only create Concat if there are multiple parts
@@ -50,8 +51,8 @@ fn parse_concatination(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
 
 
 
-fn parse_repeat(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
-    let node = parse_atom(pattern, pattern_ind);
+fn parse_repeat(pattern: &str, pattern_ind: &mut usize, group_counter: &mut u32) -> RegexAst {
+    let node = parse_atom(pattern, pattern_ind, group_counter);
     let rep = get_repition_type(pattern, pattern_ind);
     if rep == Repetition::None {
         node
@@ -60,7 +61,7 @@ fn parse_repeat(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
     }
 }
 
-fn parse_atom(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
+fn parse_atom(pattern: &str, pattern_ind: &mut usize, group_counter: &mut u32) -> RegexAst {
     match pattern.chars().nth(*pattern_ind).unwrap() {
         '^' => {
             *pattern_ind += 1;
@@ -80,7 +81,9 @@ fn parse_atom(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
 
         '(' => {
             *pattern_ind += 1;
-            let node = parse_alternation(pattern, pattern_ind);
+            *group_counter += 1;
+            let group_id = *group_counter;
+            let node = parse_alternation(pattern, pattern_ind, group_counter);
 
             if *pattern_ind >= pattern.len() || pattern.chars().nth(*pattern_ind).unwrap() != ')' {
                 panic!("involid pattern, ( is not closed")
@@ -88,7 +91,7 @@ fn parse_atom(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
 
             *pattern_ind += 1;
 
-            node
+            RegexAst::CaptureGroup(group_id, Box::new(node))
         }
 
 
@@ -128,7 +131,12 @@ fn parse_atom(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
                 'd' => {
                     *pattern_ind += 1;
                     RegexAst::Digit
-                },
+                }
+                c if c.is_ascii_digit() => {
+                    *pattern_ind += 1;
+                    let group_num = c.to_digit(10).unwrap();
+                    RegexAst::Backreference(group_num)
+                }
                 c => {
                     *pattern_ind += 1;
                     RegexAst::Literal(c)
