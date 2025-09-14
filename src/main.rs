@@ -10,15 +10,16 @@ mod utils;
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let patterns = patterns_to_vec(pattern);
-    let mut input_ind: usize = 0;
+    let input_chars: Vec<char> = input_line.chars().collect();
+    let mut input_ind = 0;
     
     eprintln!("{:?}", patterns);
 
     for pattern in patterns {
         let mut pattern_satisfied = false; 
 
-        while input_ind < input_line.len() {
-            if match_pattern_with_char(&pattern, input_line.chars().nth(input_ind).unwrap()) {
+        while input_ind < input_chars.len() {
+            if match_pattern_with_char(&pattern, input_chars[input_ind]) {
                 pattern_satisfied = true; 
                 input_ind += 1; 
                 break;
