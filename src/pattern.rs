@@ -1,20 +1,31 @@
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Repetition {
     None,
-    Plus,  // +
-    Star,  // *
+    Plus, // +
+    Star, // *
 }
-
 
 
 #[derive(Debug, PartialEq)]
-pub enum RegPattern {
-    Digit(Repetition),                 // \d
-    Word(Repetition),                  // \w
-    PositiveGroup(String, Repetition), // [abc]
-    NegativeGroup(String, Repetition), // [^abc]
-    Literal(char, Repetition),
-    Wildcard(Repetition),
-    StartOfLine,
-    EndOfLine,
+pub enum RegexAst {
+    Concat(Vec<RegexAst>),             // sequence of nodes
+    Alternate(Vec<RegexAst>),          // alternation a|b|c
+    Repeat(Box<RegexAst>, Repetition), // repetition (*, +, ?)
+    Digit,                             // \d
+    Word,                              // \w
+    PositiveGroup(String),             // [abc]
+    NegativeGroup(String),             // [^abc]
+    Literal(char),                     // 'a'
+    Wildcard,                          // .
+    StartOfLine,                       // ^
+    EndOfLine,                         // $
 }
+
+/*
+    regex = alternate
+    alternate = concat ( | concat ) *
+    concat = repeat +
+    repeat = atom ('*' | '+')?
+    atom = literal group | class | anchor
+*/

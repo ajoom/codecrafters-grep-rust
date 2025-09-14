@@ -2,90 +2,135 @@ use std::env;
 use std::io;
 use std::process;
 
-use crate::pattern::RegPattern;
+use crate::pattern::RegexAst;
 use crate::pattern::Repetition;
-use crate::utils::match_pattern_with_char;
-use crate::utils::patterns_to_vec;
+use crate::utils::pattern_to_ast;
 mod pattern;
 mod utils;
 
-fn solve(input_chars: &Vec<char>, patterns: &Vec<RegPattern>, input_ind: usize, pattern_ind: usize, next_char_must_match: bool, last_matched_on_pattern: bool) -> bool {
-    if pattern_ind == patterns.len() {
-        return true;
-    }
-    
-    let pattern =  &patterns[pattern_ind];
 
-    if input_ind == input_chars.len() {
-        return *pattern == RegPattern::EndOfLine;
-    }
-
-
-    match pattern {
-        RegPattern::StartOfLine => solve(input_chars, patterns, input_ind, pattern_ind + 1, true, false),
-
-        RegPattern::EndOfLine => input_ind == input_chars.len(),
-
-
-         RegPattern::Digit(rep)
-            | RegPattern::Word(rep)
-            | RegPattern::Literal(_, rep)
-            | RegPattern::PositiveGroup(_, rep)
-            | RegPattern::NegativeGroup(_, rep)
-            | RegPattern::Wildcard(rep) => {
-                
-                let matches =  input_ind < input_chars.len() && match_pattern_with_char(&pattern, input_chars[input_ind]);
-                
-                if next_char_must_match && !matches {
-                    return false;
-                }
-
-                match rep {
-                    Repetition::None => {
-                        if !matches {
-                            return solve(input_chars, patterns, input_ind + 1, pattern_ind, false, false);
-                        }
-                        
-                        solve(input_chars, patterns, input_ind + 1, pattern_ind + 1, false, false)
-                    },
-                    
-
-                    Repetition::Plus => {
-                        if !matches {
-                            if last_matched_on_pattern {
-                                return solve(input_chars, patterns, input_ind, pattern_ind + 1, false, false);
-                            } else {
-                                return solve(input_chars, patterns, input_ind + 1, pattern_ind, false, false);
-                            }
-                        }
-
-                        solve(input_chars, patterns, input_ind + 1, pattern_ind + 1, false, false)
-                        | solve(input_chars, patterns, input_ind + 1, pattern_ind, false, false)
-                    },
-                    
-                    Repetition::Star => {
-                        if matches {
-                            return solve(input_chars, patterns, input_ind + 1, pattern_ind + 1, false, false)
-                            | solve(input_chars, patterns, input_ind, pattern_ind + 1, false, false)
-                        }
-
-                        solve(input_chars, patterns, input_ind, pattern_ind + 1, false, false)
-                    }
-                }
+fn solve_ast(input_chars: &[char], node: &RegexAst, input_ind: usize) -> Vec<usize> {
+    // Returns a list of indices where this node could end successfully
+    match node {
+        RegexAst::Literal(c) => {
+            if input_ind < input_chars.len() && input_chars[input_ind] == *c {
+                vec![input_ind + 1]
+            } else {
+                vec![]
+            }
         }
+        RegexAst::Digit => {
+            if input_ind < input_chars.len() && input_chars[input_ind].is_ascii_digit() {
+                vec![input_ind + 1]
+            } else {
+                vec![]
+            }
+        }
+        RegexAst::Word => {
+            if input_ind < input_chars.len() && (input_chars[input_ind].is_ascii_alphanumeric() || input_chars[input_ind] == '_') {
+                vec![input_ind + 1]
+            } else {
+                vec![]
+            }
+        }
+        RegexAst::Wildcard => {
+            if input_ind < input_chars.len() {
+                vec![input_ind + 1]
+            } else {
+                vec![]
+            }
+        }
+        RegexAst::PositiveGroup(group) => {
+            if input_ind < input_chars.len() && group.contains(input_chars[input_ind]) {
+                vec![input_ind + 1]
+            } else {
+                vec![]
+            }
+        }
+        RegexAst::NegativeGroup(group) => {
+            if input_ind < input_chars.len() && !group.contains(input_chars[input_ind]) {
+                vec![input_ind + 1]
+            } else {
+                vec![]
+            }
+        }
+        RegexAst::StartOfLine => vec![input_ind], // handled externally
+        RegexAst::EndOfLine => {
+            if input_ind == input_chars.len() {
+                vec![input_ind]
+            } else {
+                vec![]
+            }
+        }
+        RegexAst::Concat(nodes) => {
+            let mut indices = vec![input_ind];
+            for sub in nodes {
+                let mut new_indices = vec![];
+                for &i in &indices {
+                    new_indices.extend(solve_ast(input_chars, sub, i));
+                }
+                indices = new_indices;
+                if indices.is_empty() {
+                    break;
+                }
+            }
+            indices
+        }
+        RegexAst::Alternate(nodes) => {
+            let mut indices = vec![];
+            for sub in nodes {
+                indices.extend(solve_ast(input_chars, sub, input_ind));
+            }
+            indices
+        }
+        RegexAst::Repeat(sub, rep) => match rep {
+            Repetition::None => solve_ast(input_chars, sub, input_ind),
+            Repetition::Plus => {
+                // one or more
+                let mut result = vec![];
+                for i in solve_ast(input_chars, sub, input_ind) {
+                    // keep repeating
+                    let mut more = solve_ast_repeat(input_chars, sub, i, true);
+                    result.append(&mut more);
+                }
+                result
+            }
+            Repetition::Star => {
+                // zero or more
+                let mut result = vec![input_ind];
+                result.append(&mut solve_ast_repeat(input_chars, sub, input_ind, false));
+                result
+            }
+        },
     }
 }
 
+fn solve_ast_repeat(input_chars: &[char], sub: &RegexAst, input_ind: usize, must_have_one: bool) -> Vec<usize> {
+    let mut results = vec![];
+    let mut queue = vec![input_ind];
 
+    while let Some(ind) = queue.pop() {
+        let next = solve_ast(input_chars, sub, ind);
+        for &i in &next {
+            if i > ind {
+                results.push(i);
+                queue.push(i);
+            }
+        }
+    }
 
+    if must_have_one && results.is_empty() {
+        vec![]
+    } else {
+        results
+    }
+}
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
-    let patterns = patterns_to_vec(pattern);
-    let input_chars: Vec<char> = input_line.chars().collect();
-
-    eprintln!("Parsed patterns: {:?}", patterns);
-
-    solve(&input_chars, &patterns, 0, 0, false, false)
+    let ast = pattern_to_ast(pattern);
+    eprintln!("{:?}", ast);
+    let input_chars: Vec<char> = input_line.trim_end().chars().collect();
+    !solve_ast(&input_chars, &ast, 0).is_empty()
 }
 
 
