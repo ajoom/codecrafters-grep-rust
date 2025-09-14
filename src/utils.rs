@@ -134,39 +134,12 @@ fn parse_atom(pattern: &str, pattern_ind: &mut usize) -> RegexAst {
 
 
 
-
-// pub fn match_pattern_with_char(pattern: &RegPattern, c: char) -> bool {
-//     match pattern {
-//         RegPattern::Digit(_) => c.is_ascii_digit(),
-
-//         RegPattern::Word(_) => c.is_ascii_alphanumeric() || c == '_',
-
-//         RegPattern::PositiveGroup(group, _) => group.chars().any(|gc| gc == c),
-
-//         RegPattern::NegativeGroup(group, _) => group.chars().all(|gc| gc != c),
-
-//         RegPattern::Literal(l, _) => c == *l,
-
-//         RegPattern::Wildcard(_) => true,
-
-//         _ => panic!("should not be matched with char"),
-//     }
-// }
-
-
-
-
-
-
-
-
-
 fn get_repition_type(pattern: &str, last_index_in_pattern: &mut usize) -> Repetition {
-    if *last_index_in_pattern + 1 >= pattern.len() {
+    if *last_index_in_pattern >= pattern.len() {
         return Repetition::None;
     }
 
-    match pattern.chars().nth(*last_index_in_pattern + 1).unwrap() {
+    match pattern.chars().nth(*last_index_in_pattern).unwrap() {
         '?' => {
             *last_index_in_pattern += 1;
             Repetition::Star
