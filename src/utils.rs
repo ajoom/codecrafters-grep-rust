@@ -80,10 +80,12 @@ pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
 
         // literal pattern :)
         let repition = get_repition_type(pattern, pattern_ind);
-        result.push(RegPattern::Literal(
-            pattern.chars().nth(pattern_ind).unwrap(),
-            repition,
-        ));
+
+        result.push(match pattern.chars().nth(pattern_ind).unwrap() {
+            '.' => RegPattern::Wildcard(repition),
+            _ => RegPattern::Literal(pattern.chars().nth(pattern_ind).unwrap(), repition),
+        });
+
         pattern_ind += 1;
         if repition != Repetition::None {
             pattern_ind += 1;
@@ -104,6 +106,8 @@ pub fn match_pattern_with_char(pattern: &RegPattern, c: char) -> bool {
         RegPattern::NegativeGroup(group, _) => group.chars().all(|gc| gc != c),
 
         RegPattern::Literal(l, _) => c == *l,
+
+        RegPattern::Wildcard(_) => true,
 
         _ => panic!("should not be matched with char"),
     }

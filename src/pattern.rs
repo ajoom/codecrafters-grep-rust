@@ -14,6 +14,7 @@ pub enum RegPattern {
     PositiveGroup(String, Repetition), // [abc]
     NegativeGroup(String, Repetition), // [^abc]
     Literal(char, Repetition),
+    Wildcard(Repetition),
     StartOfLine,
     EndOfLine,
 }

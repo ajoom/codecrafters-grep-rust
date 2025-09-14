@@ -31,7 +31,8 @@ fn solve(input_chars: &Vec<char>, patterns: &Vec<RegPattern>, input_ind: usize, 
             | RegPattern::Word(rep)
             | RegPattern::Literal(_, rep)
             | RegPattern::PositiveGroup(_, rep)
-            | RegPattern::NegativeGroup(_, rep) => {
+            | RegPattern::NegativeGroup(_, rep)
+            | RegPattern::Wildcard(rep) => {
                 
                 let matches =  input_ind < input_chars.len() && match_pattern_with_char(&pattern, input_chars[input_ind]);
                 
