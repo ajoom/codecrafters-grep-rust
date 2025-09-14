@@ -6,4 +6,5 @@ pub enum RegPattern {
     NegativeGroup(String), // [^abc]
     Literal(char),
     StartOfLine,
+    EndOfLine,
 }

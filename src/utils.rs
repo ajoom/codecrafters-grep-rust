@@ -54,6 +54,12 @@ pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
             continue;
         }
 
+        if pattern.chars().nth(pattern_ind).unwrap() == '$' {
+            result.push(RegPattern::EndOfLine);
+            pattern_ind += 1;
+            continue;
+        }
+
         // literal pattern :)
         result.push(RegPattern::Literal(
             pattern.chars().nth(pattern_ind).unwrap(),

@@ -17,31 +17,39 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     eprintln!("{:?}", patterns);
 
     for pattern in patterns {
-        if pattern == RegPattern::StartOfLine {
-            next_char_must_match = true;
-        } else {
-            let mut pattern_satisfied = false;
+        match pattern {
+            RegPattern::StartOfLine => {
+                next_char_must_match = true;
+            }
 
-            while input_ind < input_chars.len() {
-                // matches the pattern
-                if match_pattern_with_char(&pattern, input_chars[input_ind]) {
-                    pattern_satisfied = true;
+            RegPattern::EndOfLine => {
+                return input_ind == input_chars.len();
+            }
+
+            _ => {
+                let mut pattern_satisfied = false;
+
+                while input_ind < input_chars.len() {
+                    // matches the pattern
+                    if match_pattern_with_char(&pattern, input_chars[input_ind]) {
+                        pattern_satisfied = true;
+                        input_ind += 1;
+                        break;
+                    }
+
+                    // doesnt match the pattern
+                    if next_char_must_match {
+                        return false;
+                    }
+
                     input_ind += 1;
-                    break;
                 }
 
-                // doesnt match the pattern
-                if next_char_must_match {
+                if !pattern_satisfied {
                     return false;
-                } 
-
-                input_ind += 1;
+                }
+                next_char_must_match = false;
             }
-
-            if !pattern_satisfied {
-                return false;
-            }
-            next_char_must_match = false;
         }
     }
 
