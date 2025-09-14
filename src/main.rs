@@ -63,7 +63,12 @@ fn solve(input_chars: &Vec<char>, patterns: &Vec<RegPattern>, input_ind: usize, 
                     },
                     
                     Repetition::Star => {
-                        matches | solve(input_chars, patterns, input_ind, pattern_ind + 1, false, false)
+                        if matches {
+                            return solve(input_chars, patterns, input_ind + 1, pattern_ind + 1, false, false)
+                            | solve(input_chars, patterns, input_ind, pattern_ind + 1, false, false)
+                        }
+
+                        solve(input_chars, patterns, input_ind, pattern_ind + 1, false, false)
                     }
                 }
         }
