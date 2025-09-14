@@ -3,6 +3,7 @@ use std::io;
 use std::process;
 
 use crate::pattern::RegPattern;
+use crate::pattern::Repetition;
 use crate::utils::match_pattern_with_char;
 use crate::utils::patterns_to_vec;
 mod pattern;
@@ -14,9 +15,9 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let mut input_ind = 0;
     let mut next_char_must_match = false;
 
-    eprintln!("{:?}", patterns);
+    eprintln!("Parsed patterns: {:?}", patterns);
 
-    for pattern in patterns {
+    for pattern in &patterns {
         match pattern {
             RegPattern::StartOfLine => {
                 next_char_must_match = true;
@@ -26,28 +27,47 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
                 return input_ind == input_chars.len();
             }
 
-            _ => {
-                let mut pattern_satisfied = false;
+            RegPattern::Digit(rep)
+            | RegPattern::Word(rep)
+            | RegPattern::Literal(_, rep)
+            | RegPattern::PositiveGroup(_, rep)
+            | RegPattern::NegativeGroup(_, rep) => {
+                let mut matched = 0;
 
-                while input_ind < input_chars.len() {
-                    // matches the pattern
-                    if match_pattern_with_char(&pattern, input_chars[input_ind]) {
-                        pattern_satisfied = true;
-                        input_ind += 1;
+                // Match characters according to the pattern
+                while input_ind < input_chars.len()
+                    && match_pattern_with_char(pattern, input_chars[input_ind])
+                {
+                    input_ind += 1;
+                    matched += 1;
+
+                    // Stop early if repetition is None
+                    if let Repetition::None = rep {
                         break;
                     }
-
-                    // doesnt match the pattern
-                    if next_char_must_match {
-                        return false;
-                    }
-
-                    input_ind += 1;
                 }
 
-                if !pattern_satisfied {
+                // Validate match counts based on repetition
+                match rep {
+                    Repetition::None => {
+                        if matched != 1 {
+                            return false;
+                        }
+                    }
+                    Repetition::Plus => {
+                        if matched < 1 {
+                            return false;
+                        }
+                    }
+                    Repetition::Star => {
+                        // zero or more, always ok
+                    }
+                }
+
+                if next_char_must_match && matched == 0 {
                     return false;
                 }
+
                 next_char_must_match = false;
             }
         }

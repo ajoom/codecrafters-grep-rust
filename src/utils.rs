@@ -1,6 +1,6 @@
 use core::panic;
 
-use crate::pattern::RegPattern;
+use crate::pattern::{RegPattern, Repetition};
 
 pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
     let mut pattern_ind = 0;
@@ -8,18 +8,29 @@ pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
 
     while pattern_ind < pattern.len() {
         if (pattern_ind + 1) < pattern.len() {
-
             // look for digit pattern
             if &pattern[pattern_ind..pattern_ind + 2] == r"\d" {
-                result.push(RegPattern::Digit);
+                let repetition = get_repition_type(pattern, pattern_ind + 1);
+
                 pattern_ind += 2;
+                if repetition != Repetition::None {
+                    pattern_ind += 1;
+                }
+
+                result.push(RegPattern::Digit(repetition));
                 continue;
             }
 
             // look for word pattern
             if &pattern[pattern_ind..pattern_ind + 2] == r"\w" {
-                result.push(RegPattern::Word);
+                let repetition = get_repition_type(pattern, pattern_ind + 1);
+
                 pattern_ind += 2;
+                if repetition != Repetition::None {
+                    pattern_ind += 1;
+                }
+
+                result.push(RegPattern::Word(repetition));
                 continue;
             }
 
@@ -33,17 +44,24 @@ pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
 
                 let closing_bracket_ind = closing_bracket_ind.unwrap() + pattern_ind;
 
+                let repition = get_repition_type(pattern, closing_bracket_ind - 1);
+
                 if pattern.chars().nth(pattern_ind + 1).unwrap() == '^' {
                     result.push(RegPattern::NegativeGroup(
                         pattern[pattern_ind + 2..closing_bracket_ind].to_string(),
+                        repition,
                     ));
                 } else {
                     result.push(RegPattern::PositiveGroup(
                         pattern[pattern_ind + 1..closing_bracket_ind].to_string(),
+                        repition,
                     ));
                 }
 
                 pattern_ind = closing_bracket_ind + 1;
+                if repition != Repetition::None {
+                    pattern_ind += 1;
+                }
                 continue;
             }
         }
@@ -61,10 +79,15 @@ pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
         }
 
         // literal pattern :)
+        let repition = get_repition_type(pattern, pattern_ind);
         result.push(RegPattern::Literal(
             pattern.chars().nth(pattern_ind).unwrap(),
+            repition,
         ));
         pattern_ind += 1;
+        if repition != Repetition::None {
+            pattern_ind += 1;
+        }
     }
 
     result
@@ -72,16 +95,28 @@ pub fn patterns_to_vec(pattern: &str) -> Vec<RegPattern> {
 
 pub fn match_pattern_with_char(pattern: &RegPattern, c: char) -> bool {
     match pattern {
-        RegPattern::Digit => c.is_ascii_digit(),
+        RegPattern::Digit(_) => c.is_ascii_digit(),
 
-        RegPattern::Word =>  c.is_ascii_alphanumeric() || c == '_',
+        RegPattern::Word(_) => c.is_ascii_alphanumeric() || c == '_',
 
-        RegPattern::PositiveGroup(group) => group.chars().any(|gc| gc == c),
+        RegPattern::PositiveGroup(group, _) => group.chars().any(|gc| gc == c),
 
-        RegPattern::NegativeGroup(group) => group.chars().all(|gc| gc != c),
+        RegPattern::NegativeGroup(group, _) => group.chars().all(|gc| gc != c),
 
-        RegPattern::Literal(l) => c == *l,
+        RegPattern::Literal(l, _) => c == *l,
 
         _ => panic!("should not be matched with char"),
+    }
+}
+
+fn get_repition_type(pattern: &str, last_index_in_pattern: usize) -> Repetition {
+    if last_index_in_pattern + 1 >= pattern.len() {
+        return Repetition::None;
+    }
+
+    match pattern.chars().nth(last_index_in_pattern + 1).unwrap() {
+        '*' => Repetition::Star,
+        '+' => Repetition::Plus,
+        _ => Repetition::None,
     }
 }
