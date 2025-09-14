@@ -155,3 +155,23 @@ fn get_repition_type(pattern: &str, last_index_in_pattern: &mut usize) -> Repeti
         _ => Repetition::None,
     }
 }
+
+
+
+pub fn match_pattern_with_char(pattern: &RegexAst, c: char) -> bool {
+    match pattern {
+        RegexAst::Digit => c.is_ascii_digit(),
+
+        RegexAst::Word => c.is_ascii_alphanumeric() || c == '_',
+
+        RegexAst::PositiveGroup(group) => group.chars().any(|gc| gc == c),
+
+        RegexAst::NegativeGroup(group) => group.chars().all(|gc| gc != c),
+
+        RegexAst::Literal(l) => *l == c,
+
+        RegexAst::Wildcard => true,
+        
+        _ => panic!("Code should not reach here ")
+    }
+}
