@@ -9,72 +9,76 @@ use crate::utils::patterns_to_vec;
 mod pattern;
 mod utils;
 
-fn match_pattern(input_line: &str, pattern: &str) -> bool {
-    let patterns = patterns_to_vec(pattern);
-    let input_chars: Vec<char> = input_line.chars().collect();
-    let mut input_ind = 0;
-    let mut next_char_must_match = false;
+fn solve(input_chars: &Vec<char>, patterns: &Vec<RegPattern>, input_ind: usize, pattern_ind: usize, next_char_must_match: bool, last_matched_on_pattern: bool) -> bool {
+    if pattern_ind == patterns.len() {
+        return true;
+    }
 
-    eprintln!("Parsed patterns: {:?}", patterns);
+    if input_ind == input_chars.len() {
+        return false;
+    }
 
-    for pattern in &patterns {
-        match pattern {
-            RegPattern::StartOfLine => {
-                next_char_must_match = true;
-            }
+    let pattern =  &patterns[pattern_ind];
 
-            RegPattern::EndOfLine => {
-                return input_ind == input_chars.len();
-            }
+    match pattern {
+        RegPattern::StartOfLine => solve(input_chars, patterns, input_ind, pattern_ind + 1, true, false),
 
-            RegPattern::Digit(rep)
+        RegPattern::EndOfLine => input_ind == input_chars.len(),
+
+
+         RegPattern::Digit(rep)
             | RegPattern::Word(rep)
             | RegPattern::Literal(_, rep)
             | RegPattern::PositiveGroup(_, rep)
             | RegPattern::NegativeGroup(_, rep) => {
-                let mut matched = 0;
-
-                // Match characters according to the pattern
-                while input_ind < input_chars.len()
-                    && match_pattern_with_char(pattern, input_chars[input_ind])
-                {
-                    input_ind += 1;
-                    matched += 1;
-
-                    // Stop early if repetition is None
-                    if let Repetition::None = rep {
-                        break;
-                    }
-                }
-
-                // Validate match counts based on repetition
-                match rep {
-                    Repetition::None => {
-                        if matched != 1 {
-                            return false;
-                        }
-                    }
-                    Repetition::Plus => {
-                        if matched < 1 {
-                            return false;
-                        }
-                    }
-                    Repetition::Star => {
-                        // zero or more, always ok
-                    }
-                }
-
-                if next_char_must_match && matched == 0 {
+                
+                let matches =  input_ind < input_chars.len() && match_pattern_with_char(&pattern, input_chars[input_ind]);
+                
+                if next_char_must_match && !matches {
                     return false;
                 }
 
-                next_char_must_match = false;
-            }
+                match rep {
+                    Repetition::None => {
+                        if !matches {
+                            return false;
+                        }
+                        
+                        solve(input_chars, patterns, input_ind + 1, pattern_ind + 1, false, false)
+                    },
+                    
+
+                    Repetition::Plus => {
+                        if !matches {
+                            if last_matched_on_pattern {
+                                return solve(input_chars, patterns, input_ind, pattern_ind + 1, false, false);
+                            } else {
+                                return false;
+                            }
+                        }
+
+                        solve(input_chars, patterns, input_ind + 1, pattern_ind + 1, false, false)
+                        | solve(input_chars, patterns, input_ind + 1, pattern_ind, false, false)
+                    },
+                    
+                    Repetition::Star => todo!(),
+                }
         }
     }
-
-    true
 }
+
+
+
+
+fn match_pattern(input_line: &str, pattern: &str) -> bool {
+    let patterns = patterns_to_vec(pattern);
+    let input_chars: Vec<char> = input_line.chars().collect();
+
+    eprintln!("Parsed patterns: {:?}", patterns);
+
+    solve(&input_chars, &patterns, 0, 0, false, false)
+}
+
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
 fn main() {
