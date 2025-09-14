@@ -1,41 +1,38 @@
-use std::collections::HashSet;
 use std::env;
 use std::io;
 use std::process;
 
+use crate::utils::match_pattern_with_char;
+use crate::utils::patterns_to_vec;
+mod pattern;
+mod utils;
+
+
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
-    if pattern.chars().count() == 1 {
-        return input_line.contains(pattern);
-    } else if pattern == r"\d" {
-        return input_line.chars().any(|c| c.is_ascii_digit());
-    } else if pattern == r"\w" {
-        return input_line.chars().any(|c| c.is_ascii_alphanumeric() || c == '_');
-    } else if pattern.len() > 2 && pattern.starts_with('[')  && pattern.ends_with(']') {
+    let patterns = patterns_to_vec(pattern);
+    let mut input_ind: usize = 0;
 
-        let mut positive_group = true; // at least one char in the group
 
-        if pattern.starts_with("[^") {
-            positive_group = false; // at least one char NOT in the group
-        }
+    for pattern in patterns {
+        let mut pattern_satisfied = false; 
 
-        let mut pattern_letters = HashSet::new();
-
-        for c in pattern[1..pattern.len()-1].chars() {
-            pattern_letters.insert(c);
-        }
-
-        for c in input_line.chars() {
-            if (pattern_letters.contains(&c) && positive_group)
-            || (!pattern_letters.contains(&c) && !positive_group)
-            {
-                return true;
+        while input_ind < input_line.len() {
+            if match_pattern_with_char(&pattern, input_line.chars().nth(input_ind).unwrap()) {
+                pattern_satisfied = true; 
+                input_ind += 1; 
+                break;
             }
+
+            input_ind += 1;
         }
 
-        return false;
+        if !pattern_satisfied { 
+            return false;
+        }
     }
 
-    panic!("Unhandled pattern: {pattern}");
+
+    true
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
