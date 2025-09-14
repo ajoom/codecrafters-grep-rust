@@ -11,7 +11,6 @@ mod pattern;
 mod utils;
 
 
-
 const INF: usize = 1000_000_000_usize;
 
 // returns the smallest length of input with solution, or INF if solution was not found
@@ -198,10 +197,85 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize, next_char_must
             min_index
         }
 
-        RegexAst::Repeat(sub, rep) => match rep {
-            Repetition::None => solve(input_chars, sub, input_ind, next_char_must_match, last_matched_on_pattern),
-            _ => INF // TODO: implement other repetitions
-        },
+        RegexAst::Repeat(sub, rep) => {
+            eprintln!("  -> Repeat {:?}", rep);
+            match rep {
+                Repetition::None => solve(input_chars, sub, input_ind, next_char_must_match, last_matched_on_pattern),
+                
+                Repetition::Optional => {
+                    eprintln!("    -> Optional: trying to match once or zero times");
+                    if next_char_must_match {
+                        // Try matching once, or zero times (just return current position)
+                        let match_once = solve(input_chars, sub, input_ind, true, false);
+                        if match_once != INF {
+                            match_once
+                        } else {
+                            input_ind // Zero matches is okay
+                        }
+                    } else {
+                        // Try matching once, or skip entirely
+                        let match_once = solve(input_chars, sub, input_ind, false, false);
+                        min(match_once, input_ind)
+                    }
+                }
+
+                Repetition::Star => {
+                    eprintln!("    -> Star: matching zero or more times");
+                    if next_char_must_match {
+                        // Greedy: try to match as many times as possible
+                        let mut current_pos = input_ind;
+                        while current_pos < input_chars.len() {
+                            let match_result = solve(input_chars, sub, current_pos, true, false);
+                            if match_result == INF || match_result == current_pos {
+                                break; // Can't match more or would infinite loop
+                            }
+                            current_pos = match_result;
+                        }
+                        current_pos
+                    } else {
+                        // Try different numbers of matches, return the minimum ending position
+                        let mut best_result = input_ind; // Zero matches
+                        let mut current_pos = input_ind;
+                        
+                        while current_pos < input_chars.len() {
+                            let match_result = solve(input_chars, sub, current_pos, true, false);
+                            if match_result == INF || match_result == current_pos {
+                                break;
+                            }
+                            current_pos = match_result;
+                            best_result = min(best_result, current_pos);
+                        }
+                        best_result
+                    }
+                }
+
+                Repetition::Plus => {
+                    eprintln!("    -> Plus: must match at least once");
+                    // Must match at least once
+                    let first_match = solve(input_chars, sub, input_ind, true, false);
+                    if first_match == INF {
+                        eprintln!("      -> First match failed");
+                        return if next_char_must_match { INF } else { solve(input_chars, node, input_ind + 1, false, false) };
+                    }
+                    
+                    eprintln!("      -> First match succeeded at {}", first_match);
+                    
+                    // Now match zero or more additional times (like Star)
+                    let mut current_pos = first_match;
+                    while current_pos < input_chars.len() {
+                        let match_result = solve(input_chars, sub, current_pos, true, false);
+                        if match_result == INF || match_result == current_pos {
+                            break;
+                        }
+                        eprintln!("      -> Additional match at {}", match_result);
+                        current_pos = match_result;
+                    }
+                    
+                    eprintln!("      -> Plus completed at {}", current_pos);
+                    current_pos
+                }
+            }
+        }
     };
     
     eprintln!("  -> returning {}", result);
@@ -217,6 +291,7 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     eprintln!("Final result: {}", result);
     result != INF
 }
+
 
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
