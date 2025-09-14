@@ -140,16 +140,9 @@ fn get_repition_type(pattern: &str, last_index_in_pattern: &mut usize) -> Repeti
     }
 
     match pattern.chars().nth(*last_index_in_pattern).unwrap() {
-        '?' => {
-            *last_index_in_pattern += 1;
-            Repetition::Star
-        },
-
-        '+' => {
-            *last_index_in_pattern += 1;
-            Repetition::Plus
-        },
-        
+        '*' => { *last_index_in_pattern += 1; Repetition::Star }
+        '+' => { *last_index_in_pattern += 1; Repetition::Plus }
+        '?' => { *last_index_in_pattern += 1; Repetition::Optional }
         _ => Repetition::None,
     }
 }

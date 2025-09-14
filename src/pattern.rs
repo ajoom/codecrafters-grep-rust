@@ -2,8 +2,9 @@
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Repetition {
     None,
-    Plus, // +
-    Star, // *
+    Plus,     // +
+    Star,     // *
+    Optional, // ?
 }
 
 
