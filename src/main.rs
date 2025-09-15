@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
+use std::fs;
 use std::io;
 use std::process;
 use std::vec;
@@ -229,22 +230,56 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
+// Or: your_program.sh -E <pattern> <filename>
 fn main() {
     eprintln!("Logs from your program will appear here!");
 
-    if env::args().nth(1).unwrap() != "-E" {
+    let args: Vec<String> = env::args().collect();
+    
+    if args.len() < 3 {
+        println!("Usage: {} -E <pattern> [filename]", args[0]);
+        process::exit(1);
+    }
+    
+    if args[1] != "-E" {
         println!("Expected first argument to be '-E'");
         process::exit(1);
     }
 
-    let pattern = env::args().nth(2).unwrap();
-    let mut input_line = String::new();
+    let pattern = &args[2];
+    let mut found_match = false;
 
-    io::stdin().read_line(&mut input_line).unwrap();
-
-    if match_pattern(&input_line, &pattern) {
-        process::exit(0)
+    if args.len() == 4 {
+        // File mode: read from file
+        let filename = &args[3];
+        
+        match fs::read_to_string(filename) {
+            Ok(file_contents) => {
+                // Process the file content (single line for this stage)
+                let line = file_contents.trim_end();
+                if match_pattern(line, pattern) {
+                    println!("{}", line);
+                    found_match = true;
+                }
+            }
+            Err(err) => {
+                eprintln!("Error reading file {}: {}", filename, err);
+                process::exit(1);
+            }
+        }
     } else {
-        process::exit(1)
+        // Stdin mode: read from standard input
+        let mut input_line = String::new();
+        io::stdin().read_line(&mut input_line).unwrap();
+        
+        if match_pattern(&input_line, pattern) {
+            found_match = true;
+        }
+    }
+
+    if found_match {
+        process::exit(0);
+    } else {
+        process::exit(1);
     }
 }
