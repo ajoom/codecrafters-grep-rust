@@ -230,14 +230,14 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
-// Or: your_program.sh -E <pattern> <filename>
+// Or: your_program.sh -E <pattern> <filename1> [filename2] [...]
 fn main() {
     eprintln!("Logs from your program will appear here!");
 
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 3 {
-        println!("Usage: {} -E <pattern> [filename]", args[0]);
+        println!("Usage: {} -E <pattern> [filename...]", args[0]);
         process::exit(1);
     }
     
@@ -249,23 +249,30 @@ fn main() {
     let pattern = &args[2];
     let mut found_match = false;
 
-    if args.len() == 4 {
-        // File mode: read from file
-        let filename = &args[3];
+    if args.len() > 3 {
+        // File mode: read from one or more files
+        let filenames = &args[3..];
+        let multiple_files = filenames.len() > 1;
         
-        match fs::read_to_string(filename) {
-            Ok(file_contents) => {
-                // Process each line in the file
-                for line in file_contents.lines() {
-                    if match_pattern(line, pattern) {
-                        println!("{}", line);
-                        found_match = true;
+        for filename in filenames {
+            match fs::read_to_string(filename) {
+                Ok(file_contents) => {
+                    // Process each line in the file
+                    for line in file_contents.lines() {
+                        if match_pattern(line, pattern) {
+                            if multiple_files {
+                                println!("{}:{}", filename, line);
+                            } else {
+                                println!("{}", line);
+                            }
+                            found_match = true;
+                        }
                     }
                 }
-            }
-            Err(err) => {
-                eprintln!("Error reading file {}: {}", filename, err);
-                process::exit(1);
+                Err(err) => {
+                    eprintln!("Error reading file {}: {}", filename, err);
+                    process::exit(1);
+                }
             }
         }
     } else {
