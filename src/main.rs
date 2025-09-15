@@ -75,7 +75,7 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize, captures: &mut
             
             if !end_positions.is_empty() {
                 // Only capture if there was at least one match
-                let last_end = *end_positions.last().unwrap();
+                let last_end = *end_positions.iter().max().unwrap();
                 let matched_text: String = input_chars[input_ind..last_end].iter().collect();
                 captures.insert(*group_id, matched_text);
             }
