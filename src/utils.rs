@@ -1,4 +1,5 @@
 use core::panic;
+use std::fs;
 
 use crate::pattern::{RegexAst, Repetition};
 

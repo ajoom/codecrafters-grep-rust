@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io;
+use std::path::Path;
 use std::process;
 use std::vec;
 
@@ -229,6 +230,45 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     false
 }
 
+
+
+
+fn search_directory_recursive(dir_path: &str, pattern: &str, found_match: &mut bool) {
+    if let Ok(entries) = fs::read_dir(dir_path) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                let path_str = path.to_string_lossy();
+                
+                if path.is_file() {
+                    search_in_file(&path_str, pattern, found_match);
+                } else if path.is_dir() {
+                    search_directory_recursive(&path_str, pattern, found_match);
+                }
+            }
+        }
+    }
+}
+
+
+fn search_in_file(filename: &str, pattern: &str, found_match: &mut bool) {
+    match fs::read_to_string(filename) {
+        Ok(file_contents) => {
+            // Process each line in the file
+            for line in file_contents.lines() {
+                if match_pattern(line, pattern) {
+                    println!("{}:{}", filename, line);
+                    *found_match = true;
+                }
+            }
+        }
+        Err(_) => {
+            // Skip files that can't be read (e.g., binary files, permission issues)
+            // In real grep, this might print an error, but we'll silently skip
+        }
+    }
+}
+
 // Usage: echo <input_text> | your_program.sh -E <pattern>
 // Or: your_program.sh -E <pattern> <filename1> [filename2] [...]
 fn main() {
@@ -237,42 +277,74 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 3 {
-        println!("Usage: {} -E <pattern> [filename...]", args[0]);
+        println!("Usage: {} [-r] -E <pattern> [filename_or_directory...]", args[0]);
         process::exit(1);
     }
     
-    if args[1] != "-E" {
-        println!("Expected first argument to be '-E'");
+    let mut recursive = false;
+    let mut arg_index = 1;
+    
+    // Check for -r flag
+    if args[arg_index] == "-r" {
+        recursive = true;
+        arg_index += 1;
+    }
+    
+    if arg_index >= args.len() || args[arg_index] != "-E" {
+        println!("Expected '-E' flag");
         process::exit(1);
     }
-
-    let pattern = &args[2];
+    
+    arg_index += 1; // Move past -E
+    
+    if arg_index >= args.len() {
+        println!("Expected pattern after -E");
+        process::exit(1);
+    }
+    
+    let pattern = &args[arg_index];
+    arg_index += 1;
+    
     let mut found_match = false;
 
-    if args.len() > 3 {
-        // File mode: read from one or more files
-        let filenames = &args[3..];
-        let multiple_files = filenames.len() > 1;
+    if arg_index < args.len() {
+        // File/directory mode
+        let paths = &args[arg_index..];
         
-        for filename in filenames {
-            match fs::read_to_string(filename) {
-                Ok(file_contents) => {
-                    // Process each line in the file
-                    for line in file_contents.lines() {
-                        if match_pattern(line, pattern) {
-                            if multiple_files {
-                                println!("{}:{}", filename, line);
-                            } else {
-                                println!("{}", line);
+        for path_str in paths {
+            let path = Path::new(path_str);
+            
+            if recursive && path.is_dir() {
+                // Recursive directory search
+                search_directory_recursive(path_str, pattern, &mut found_match);
+            } else if path.is_file() {
+                // File search
+                let multiple_targets = paths.len() > 1 || recursive;
+                
+                match fs::read_to_string(path_str) {
+                    Ok(file_contents) => {
+                        for line in file_contents.lines() {
+                            if match_pattern(line, pattern) {
+                                if multiple_targets {
+                                    println!("{}:{}", path_str, line);
+                                } else {
+                                    println!("{}", line);
+                                }
+                                found_match = true;
                             }
-                            found_match = true;
                         }
                     }
+                    Err(err) => {
+                        eprintln!("Error reading file {}: {}", path_str, err);
+                        process::exit(1);
+                    }
                 }
-                Err(err) => {
-                    eprintln!("Error reading file {}: {}", filename, err);
-                    process::exit(1);
-                }
+            } else if path.is_dir() && !recursive {
+                eprintln!("{}: Is a directory", path_str);
+                process::exit(1);
+            } else {
+                eprintln!("{}: No such file or directory", path_str);
+                process::exit(1);
             }
         }
     } else {
