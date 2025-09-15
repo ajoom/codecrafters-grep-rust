@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::env;
 use std::io;
 use std::process;
@@ -11,8 +12,6 @@ use crate::utils::pattern_to_ast;
 mod old_main;
 mod pattern;
 mod utils;
-
-use std::collections::HashSet;
 
 
 // Returns all possible end positions after matching this node starting from input_ind
@@ -53,8 +52,8 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize, captures: &mut
         RegexAst::Backreference(group_id) => {
             let captured_group_text = captures.get(group_id);
 
-            if captured_group_text.is_some() {
-                let captured_group_text: Vec<char> = captured_group_text.unwrap().chars().collect();
+            if let Some(captured_text) = captured_group_text {
+                let captured_group_text: Vec<char> = captured_text.chars().collect();
 
                 let remaining_input_len = input_chars.len() - input_ind;
                 if remaining_input_len < captured_group_text.len() {
@@ -72,27 +71,43 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize, captures: &mut
 
 
         RegexAst::CaptureGroup(group_id, ast) => {
-            let mut results = Vec::new();
-
-             let end_positions = solve(input_chars, ast, input_ind, captures);
-             for end_position in &end_positions {
-                let matched_text: String = input_chars[input_ind..*end_position].iter().cloned().collect();
+            let end_positions = solve(input_chars, ast, input_ind, captures);
+            
+            if !end_positions.is_empty() {
+                // Only capture if there was at least one match
+                let last_end = *end_positions.last().unwrap();
+                let matched_text: String = input_chars[input_ind..last_end].iter().collect();
                 captures.insert(*group_id, matched_text);
-                results.push(*end_position);
-             }
-             
-             results
+            }
+            
+            end_positions
         }
 
 
         RegexAst::Alternate(regex_asts) => {
-            let mut results = HashSet::new();
+            let mut all_results = HashSet::new();
+            
             for option in regex_asts {
-                for end_pos in solve(input_chars, option, input_ind, captures) {
-                    results.insert(end_pos);
+                // Save current capture state for backtracking
+                let saved_captures = captures.clone();
+                
+                let results = solve(input_chars, option, input_ind, captures);
+                
+                if results.is_empty() {
+                    // This alternative failed, restore captures
+                    *captures = saved_captures;
+                } else {
+                    // This alternative succeeded, keep the captures and add results
+                    for end_pos in results {
+                        all_results.insert(end_pos);
+                    }
+                    // For now, we'll take the first successful alternative
+                    // In a more sophisticated implementation, we'd try all alternatives
+                    break;
                 }
             }
-            results.into_iter().collect()
+            
+            all_results.into_iter().collect()
         }
 
         RegexAst::Concat(regex_asts) => {
@@ -197,7 +212,7 @@ fn solve(input_chars: &[char], node: &RegexAst, input_ind: usize, captures: &mut
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let ast = pattern_to_ast(pattern);
-    let input_chars: Vec<char> = input_line.chars().collect();
+    let input_chars: Vec<char> = input_line.trim_end().chars().collect();
 
     eprintln!("{:?}", ast);
     
