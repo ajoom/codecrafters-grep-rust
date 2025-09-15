@@ -255,11 +255,12 @@ fn main() {
         
         match fs::read_to_string(filename) {
             Ok(file_contents) => {
-                // Process the file content (single line for this stage)
-                let line = file_contents.trim_end();
-                if match_pattern(line, pattern) {
-                    println!("{}", line);
-                    found_match = true;
+                // Process each line in the file
+                for line in file_contents.lines() {
+                    if match_pattern(line, pattern) {
+                        println!("{}", line);
+                        found_match = true;
+                    }
                 }
             }
             Err(err) => {
